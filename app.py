@@ -6,7 +6,7 @@ from datetime import datetime
 import os
 
 # === CONFIGURAÇÃO DO GOOGLE SHEETS ===
-spreadsheet_id = "13Yqhezy8VIknbs0083sCwsIgqw5VIJrqCTM8_Ry_de0"
+spreadsheet_id = "1B1Wkk3mIRpbeJA5Miw3qiGZ6e8UNpumC4_I6_KuGU2k"
 sheet_name = "DEMONSTRATIVO"
 csv_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
 
