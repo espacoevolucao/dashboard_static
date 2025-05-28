@@ -75,51 +75,59 @@ app.layout = dbc.Container([
 ], fluid=True)
 
 # === CALLBACK PARA ATUALIZAÇÃO AUTOMÁTICA ===
+import traceback
+
 @app.callback(
     [Output('tabela-esquerda', 'data'),
      Output('tabela-direita', 'data')],
     Input('interval-atualizacao', 'n_intervals')
 )
 def atualizar_dados(n):
-    df_demo = pd.read_csv(csv_url)
+    try:
+        df_demo = pd.read_csv(csv_url)
 
-    df_demo = df_demo.rename(columns={
-        'NOME DO CLIENTE': 'Cliente',
-        'DATA NF': 'Data Nota',
-        'DATA PGTO': 'Data Pagamento',
-        'PLANO': 'Plano de Saúde',
-        'SITUAÇÃO': 'Situação'
-    })
+        df_demo = df_demo.rename(columns={
+            'NOME DO CLIENTE': 'Cliente',
+            'DATA NF': 'Data Nota',
+            'DATA PGTO': 'Data Pagamento',
+            'PLANO': 'Plano de Saúde',
+            'SITUAÇÃO': 'Situação'
+        })
 
-    df_demo['Data Nota'] = pd.to_datetime(df_demo['Data Nota'], errors='coerce', dayfirst=True)
-    df_demo['Data Pagamento'] = pd.to_datetime(df_demo['Data Pagamento'], errors='coerce', dayfirst=True)
+        df_demo['Data Nota'] = pd.to_datetime(df_demo['Data Nota'], errors='coerce', dayfirst=True)
+        df_demo['Data Pagamento'] = pd.to_datetime(df_demo['Data Pagamento'], errors='coerce', dayfirst=True)
 
-    hoje = datetime.today()
-    mes_atual = hoje.month
-    ano_atual = hoje.year
+        hoje = datetime.today()
+        mes_atual = hoje.month
+        ano_atual = hoje.year
 
-    df_notas_mes = df_demo[
-        (df_demo['Data Nota'].dt.month == mes_atual) &
-        (df_demo['Data Nota'].dt.year == ano_atual)
-    ].copy()
+        df_notas_mes = df_demo[
+            (df_demo['Data Nota'].dt.month == mes_atual) &
+            (df_demo['Data Nota'].dt.year == ano_atual)
+        ].copy()
 
-    ultima_nota_mes = df_notas_mes.sort_values('Data Nota').drop_duplicates('Cliente', keep='last')
+        ultima_nota_mes = df_notas_mes.sort_values('Data Nota').drop_duplicates('Cliente', keep='last')
 
-    df_pagamentos_mes = df_demo[
-        (df_demo['Data Pagamento'].notna()) &
-        (df_demo['Data Pagamento'].dt.month == mes_atual) &
-        (df_demo['Data Pagamento'].dt.year == ano_atual)
-    ].copy()
+        df_pagamentos_mes = df_demo[
+            (df_demo['Data Pagamento'].notna()) &
+            (df_demo['Data Pagamento'].dt.month == mes_atual) &
+            (df_demo['Data Pagamento'].dt.year == ano_atual)
+        ].copy()
 
-    ultimo_pagamento = df_pagamentos_mes.sort_values('Data Pagamento').drop_duplicates('Cliente', keep='last')[['Cliente', 'Data Pagamento']]
+        ultimo_pagamento = df_pagamentos_mes.sort_values('Data Pagamento').drop_duplicates('Cliente', keep='last')[['Cliente', 'Data Pagamento']]
 
-    df = pd.merge(ultima_nota_mes.drop(columns=['Data Pagamento']), ultimo_pagamento, on='Cliente', how='left')
+        df = pd.merge(ultima_nota_mes.drop(columns=['Data Pagamento']), ultimo_pagamento, on='Cliente', how='left')
 
-    df['Data Nota'] = pd.to_datetime(df['Data Nota'], errors='coerce').dt.strftime('%d/%m/%Y')
-    df['Data Pagamento'] = pd.to_datetime(df['Data Pagamento'], errors='coerce').dt.strftime('%d/%m/%Y')
+        df['Data Nota'] = pd.to_datetime(df['Data Nota'], errors='coerce').dt.strftime('%d/%m/%Y')
+        df['Data Pagamento'] = pd.to_datetime(df['Data Pagamento'], errors='coerce').dt.strftime('%d/%m/%Y')
 
-    dados = df.to_dict('records')
-    return dados, dados
+        dados = df.to_dict('records')
+        return dados, dados
+
+    except Exception as e:
+        print("Erro ao atualizar dados:", e)
+        traceback.print_exc()
+        return [], []
 
 # === EXECUÇÃO ===
 if __name__ == "__main__":
