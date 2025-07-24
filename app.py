@@ -4,12 +4,12 @@ from dash import dash_table, html, dcc, Input, Output
 import dash_bootstrap_components as dbc
 from datetime import datetime
 import os
-import traceback
 
 # === CONFIGURAÇÃO DO GOOGLE SHEETS ===
 spreadsheet_id = "1nY312OUwMypCjvsJimr_HIJUXknr7K0M"
-sheet_name = "DEMONSTRATIVO"
+sheet_name = "DEMONSTRATIVO"  # Verifique o nome exato da aba
 csv_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
+
 
 # === DASH APP ===
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -17,7 +17,7 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.layout = dbc.Container([
     html.H2("Relatório - Clientes", className="my-4"),
 
-    dcc.Interval(id='interval-atualizacao', interval=60*1000, n_intervals=0),
+    dcc.Interval(id='interval-atualizacao', interval=60*1000, n_intervals=0),  # Atualiza a cada 60 segundos
 
     dbc.Row([
         dbc.Col(
@@ -82,68 +82,45 @@ app.layout = dbc.Container([
     Input('interval-atualizacao', 'n_intervals')
 )
 def atualizar_dados(n):
-    try:
-        # Lê os dados
-        df_demo = pd.read_csv(csv_url)
+    df_demo = pd.read_csv(csv_url)
 
-        # Renomeia para nomes simplificados
-        df_demo = df_demo.rename(columns={
-            'NOME DO CLIENTE': 'Cliente',
-            'DATA NF': 'Data Nota',
-            'DATA PGTO': 'Data Pagamento',
-            'PLANO': 'Plano de Saúde',
-            'SITUAÇÃO': 'Situação'
-        })
+    df_demo = df_demo.rename(columns={
+        'NOME DO CLIENTE': 'Cliente',
+        'DATA NF': 'Data Nota',
+        'DATA PGTO': 'Data Pagamento',
+        'PLANO': 'Plano de Saúde',
+        'SITUAÇÃO': 'Situação'
+    })
 
-        # Converte colunas de data
-        df_demo['Data Nota'] = pd.to_datetime(df_demo['Data Nota'], errors='coerce', dayfirst=True)
-        df_demo['Data Pagamento'] = pd.to_datetime(df_demo['Data Pagamento'], errors='coerce', dayfirst=True)
+    df_demo['Data Nota'] = pd.to_datetime(df_demo['Data Nota'], errors='coerce', dayfirst=True)
+    df_demo['Data Pagamento'] = pd.to_datetime(df_demo['Data Pagamento'], errors='coerce', dayfirst=True)
 
-        # Filtra mês atual
-        hoje = datetime.today()
-        mes_atual = hoje.month
-        ano_atual = hoje.year
+    hoje = datetime.today()
+    mes_atual = hoje.month
+    ano_atual = hoje.year
 
-        df_notas_mes = df_demo[
-            (df_demo['Data Nota'].dt.month == mes_atual) &
-            (df_demo['Data Nota'].dt.year == ano_atual)
-        ].copy()
+    df_notas_mes = df_demo[
+        (df_demo['Data Nota'].dt.month == mes_atual) &
+        (df_demo['Data Nota'].dt.year == ano_atual)
+    ].copy()
 
-        ultima_nota_mes = df_notas_mes.sort_values('Data Nota').drop_duplicates('Cliente', keep='last')
+    ultima_nota_mes = df_notas_mes.sort_values('Data Nota').drop_duplicates('Cliente', keep='last')
 
-        df_pagamentos_mes = df_demo[
-            (df_demo['Data Pagamento'].notna()) &
-            (df_demo['Data Pagamento'].dt.month == mes_atual) &
-            (df_demo['Data Pagamento'].dt.year == ano_atual)
-        ].copy()
+    df_pagamentos_mes = df_demo[
+        (df_demo['Data Pagamento'].notna()) &
+        (df_demo['Data Pagamento'].dt.month == mes_atual) &
+        (df_demo['Data Pagamento'].dt.year == ano_atual)
+    ].copy()
 
-        ultimo_pagamento = df_pagamentos_mes.sort_values('Data Pagamento').drop_duplicates('Cliente', keep='last')[['Cliente', 'Data Pagamento']]
+    ultimo_pagamento = df_pagamentos_mes.sort_values('Data Pagamento').drop_duplicates('Cliente', keep='last')[['Cliente', 'Data Pagamento']]
 
-        # Junta as informações
-        df = pd.merge(
-            ultima_nota_mes.drop(columns=['Data Pagamento']),
-            ultimo_pagamento,
-            on='Cliente',
-            how='left'
-        )
+    df = pd.merge(ultima_nota_mes.drop(columns=['Data Pagamento']), ultimo_pagamento, on='Cliente', how='left')
 
-        # Formata datas
-        df['Data Nota'] = pd.to_datetime(df['Data Nota'], errors='coerce').dt.strftime('%d/%m/%Y')
-        df['Data Pagamento'] = pd.to_datetime(df['Data Pagamento'], errors='coerce').dt.strftime('%d/%m/%Y')
+    df['Data Nota'] = pd.to_datetime(df['Data Nota'], errors='coerce').dt.strftime('%d/%m/%Y')
+    df['Data Pagamento'] = pd.to_datetime(df['Data Pagamento'], errors='coerce').dt.strftime('%d/%m/%Y')
 
-        dados = df.to_dict('records')
-        return dados, dados
-
-    except Exception as e:
-        traceback.print_exc()
-        erro = f"Erro ao atualizar dados: {str(e)}"
-        dados_erro = [{
-            "Cliente": erro,
-            "Plano de Saúde": "",
-            "Data Nota": "",
-            "Data Pagamento": ""
-        }]
-        return dados_erro, dados_erro
+    dados = df.to_dict('records')
+    return dados, dados
 
 # === EXECUÇÃO ===
 if __name__ == "__main__":
